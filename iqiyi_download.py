@@ -4,8 +4,13 @@ import requests
 import sys
 import time
 import subprocess
+import logging
 title = sys.argv[1].split(".")[0]
 
+logging.basicConfig(filename='dowload.log',level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s %(message)s')
+
+logging.info("downloading: {title}".format(title=title))
 # call you-get
 url = open(sys.argv[1], "r").read()
 args = "you-get --json --format=HD " + url
@@ -16,7 +21,7 @@ meta = json.loads(m3u8_text)
 m3u8_url = meta["streams"]["HD"]["m3u8_url"]
 
 # download m3u8
-m3u8_request = requests.get(m3u8_url)
+m3u8_request = requests.get(m3u8_url, timeout=1)
 m3u8_text = m3u8_request.content
 
 # download video
@@ -26,17 +31,21 @@ total = len(m3u8_contents)
 current = 0
 for line in m3u8_contents:
     current = current + 1
-    print "\rprogress: {progress}%".format(progress=round(current) * 100 / total),
+    time_out = 0.1
+    print "\rprogress: {:.2f}%".format(round(current) * 100 / total),
     sys.stdout.flush()
     line = line.strip()
-    if line.startswith("#"):
+    if not line or line.startswith("#"):
+        logging.debug("line is comment, skip")
         continue
     while True:
         try:
-            request = requests.get(line)
+            logging.debug("downloading: {line}".format(line=line))
+            request = requests.get(line, timeout=1)
             data_file.write(request.content)
             break
         except:
-            print "\rdownload failed, retry",
-            time.sleep(0.2)
+            logging.info("download failed, wait {time_out}s".format(time_out=time_out))
+            time.sleep(time_out)
+            time_out = min(1, time_out*2)
 data_file.close()
