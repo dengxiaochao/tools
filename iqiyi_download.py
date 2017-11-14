@@ -7,12 +7,13 @@ import subprocess
 import logging
 title = sys.argv[1].split(".")[0]
 
-logging.basicConfig(filename='dowload.log',level=logging.DEBUG)
-logging.basicConfig(format='%(asctime)s %(message)s')
+logging.basicConfig(filename='dowload.log',level=logging.DEBUG,
+        format='%(asctime)s %(message)s')
 
 logging.info("downloading: {title}".format(title=title))
 # call you-get
 url = open(sys.argv[1], "r").read()
+subprocess.check_call("curl " + url + ">/dev/null 2>&1", shell=True)
 args = "you-get --json --format=HD " + url
 m3u8_text = subprocess.check_output(args, shell=True)
 
@@ -47,5 +48,5 @@ for line in m3u8_contents:
         except:
             logging.info("download failed, wait {time_out}s".format(time_out=time_out))
             time.sleep(time_out)
-            time_out = min(1, time_out*2)
+            time_out = min(7, time_out*2)
 data_file.close()
