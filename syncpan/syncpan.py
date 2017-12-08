@@ -13,10 +13,14 @@ class RemoteMeta(object):
     def __init__(self, meta_dict):
         self.meta = meta_dict
 
+    def path(self):
+        return self.meta.get('server_filename')
     def is_dir(self):
         return self.meta.get("isDir")
     def mtime(self):
         return self.meta.get("local_mtime")
+    def sub_entries(self):
+        return self.meta.get()
 
 
 class SyncPan(object):
@@ -62,21 +66,20 @@ class SyncPan(object):
         rpath = self.remote_root + "/" + path
         lpath = self.local_root + "/" + path
         rmeta = RemoteMeta(self.pcs.meta(rpath).json()['info'][0])
-        lmeta = os.stat(lpath)
-        # if is file, nop or download
-        if not rmeta.is_dir():
-            if not os.path.exists(lpath) or lmeta.st_mtime < rmeta.mtime():
-                response = self.pcs.download(rpath)
-                # todo: get response content to local file
+        local_exist = os.path.exists(lpath)
+        if local_exist:
+            lmeta = os.stat(lpath)
 
-
-
-        # if is directory,
-        # 1. get local path attributes
-        # 2. get remote path attributes
-        # 3. if remote is newer, list remote contents
-        # 4. recursive sync_one
-        pass
-
+        if rmeta.is_dir():
+            if not local_exist:
+                os.mkdir(lpath, 0o755);
+            sub_metas = [RemoteMeta(meta) for meta in self.pcs.list_files(rpath).json()['list']]
+            for meta in sub_metas:
+                self.sync_one(path + "/" + meta.path())
+        elif not local_exist or lmeta.st_mtime < rmeta.mtime():
+            # if is newer file, download
+            response = self.pcs.download(rpath)
+            logging.debug("downloading %s", path)
+            # todo: get response content to local file
 
 
